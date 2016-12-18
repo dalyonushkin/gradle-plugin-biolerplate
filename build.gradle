@@ -1,0 +1,91 @@
+plugins {
+    id "java-gradle-plugin"
+    id "groovy"
+    id "nebula.contacts" version "3.0.1"
+    id "nebula.info" version "3.1.0"
+    id 'maven'
+    id 'idea'
+    id "nebula.nebula-release" version "4.0.1"
+}
+
+
+
+gradlePlugin {
+    plugins {
+        pluginName {
+            id = "org.dalyonushkin.gradle"
+            implementationClass = "org.dalyonushkin.gradle.PluginClass"
+        }
+    }
+}
+
+group 'org.dalyonushkin.gradle'
+contacts {
+    'denis.alyonushkin@gmail.com' {
+        moniker 'Denis Alyonushkin'
+        roles 'notify', 'owner'
+    }
+}
+
+repositories {
+    mavenCentral()
+    jcenter()
+}
+
+
+uploadArchives {
+/*//test repo
+    repositories {
+        mavenDeployer {
+            repository(url: uri($localMavenRepository))
+        }
+    }*/
+}
+
+
+sourceSets {
+    functionalTest {
+        groovy.srcDir file('src/functionalTest/groovy')
+        resources.srcDir file('src/functionalTest/resources')
+        compileClasspath += sourceSets.main.output + configurations.testRuntime
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+idea.module {
+    sourceSets.functionalTest.allSource.srcDirs.each {
+        testSourceDirs += it
+    }
+
+    scopes.TEST.plus += [configurations.functionalTestCompile]
+    scopes.TEST.plus += [configurations.functionalTestRuntime]
+}
+
+
+task functionalTest(type: Test) {
+    description = 'Runs the functional tests.'
+    group = 'verification'
+    testClassesDir = sourceSets.functionalTest.output.classesDir
+    classpath = sourceSets.functionalTest.runtimeClasspath
+    mustRunAfter test
+
+    reports {
+        html.destination = project.file("$html.destination/functional")
+        junitXml.destination = project.file("$junitXml.destination/functional")
+    }
+}
+
+
+dependencies {
+    compile gradleApi()
+    compile localGroovy()
+    testCompile 'com.netflix.nebula:nebula-test:latest.release'
+    functionalTestCompile 'com.netflix.nebula:nebula-test:latest.release'
+    compile 'org.codehaus.groovy:groovy-all:2.4.7'
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+uploadArchives.dependsOn test
+uploadArchives.dependsOn functionalTest
+tasks.release.dependsOn tasks.uploadArchives
+
